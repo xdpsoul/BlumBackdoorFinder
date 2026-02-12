@@ -11,6 +11,6 @@
    - FTP / SFTP
 3) Reinstall yarn and webpack properly
 4) Reinstall screenshot-basic / Remove files:
-   - "dist"
-   - "node_modules"
-   - ".yarn.installed"
+   - dist
+   - node_modules
+   - .yarn.installed
