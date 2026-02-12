@@ -236,15 +236,42 @@ scan 'String.fromCharCode(parseInt' "JS - Unicode Decoding" "HIGH" "js"
 scan 'fromCharCode' "JS - Char Conversion" "MEDIUM" "js"
 scan 'eval(' "JS - eval()" "HIGH" "js"
 
-hidden=$(find "$SCAN_PATH" -type f \( -name ".*\.lua" -o -name ".*\.js" \) 2>/dev/null | grep -v node_modules | grep -v ".eslint" | grep -v ".prettier" | grep -v ".babel")
-if [ -n "$hidden" ]; then
-    count=$(echo "$hidden" | wc -l)
-    CRITICAL_COUNT=$((CRITICAL_COUNT + count))
-    FOUND_ITEMS+=("CRITICAL|Hidden Files|$count")
+hidden_files=$(find "$SCAN_PATH" -type f \( -name ".*\.lua" -o -name ".*\.js" \) 2>/dev/null)
+if [ -n "$hidden_files" ]; then
+    echo -e "${YELLOW}📋 Found $(echo "$hidden_files" | wc -l) hidden files${NC}"
+    
+    echo "$hidden_files" | while read file; do
+        if [ -f "$file" ]; then
+            first_line=$(head -n 1 "$file" 2>/dev/null | tr -d '\0')
+            
+            if [[ "$first_line" =~ ^/\*\ \[.*\]\ \*/ ]]; then
+                if grep -q "fubo" "$file" 2>/dev/null; then
+                    echo -e "${RED}🔴 MASKED BACKDOOR: ${YELLOW}$file${NC}"
+                    echo -e "${RED}   └── 🗑️  DELETING...${NC}"
+                    
+                    rm -f "$file"
+                    if [ ! -f "$file" ]; then
+                        echo -e "${GREEN}   └── ✅ DELETED${NC}"
+                        CRITICAL_COUNT=$((CRITICAL_COUNT + 1))
+                        FOUND_ITEMS+=("CRITICAL|Blum - XOR Masked Backdoor|1")
+                        FOUND_ITEMS+=("DELETED|FILE: $file|1")
+                    else
+                        echo -e "${RED}   └── ❌ DELETE FAILED${NC}"
+                    fi
+                fi
+            fi
+        fi
+    done
+    
     echo "" >> "$REPORT_FILE"
-    echo "[CRITICAL] Hidden Files" >> "$REPORT_FILE"
-    echo "$hidden" >> "$REPORT_FILE"
+    echo "[CRITICAL] Hidden Files (Complete List)" >> "$REPORT_FILE"
+    echo "$hidden_files" >> "$REPORT_FILE"
+    
+else
+    echo -e "${GREEN}✅ No hidden files found${NC}"
 fi
+
+echo -e ""
 
 TOTAL=$((CRITICAL_COUNT + HIGH_COUNT + MEDIUM_COUNT))
 echo "" >> "$REPORT_FILE"
